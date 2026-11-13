@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d6fe0">
+<title>FoodSnap – บันทึกแคลอรี่จากรูปอาหาร</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eef5fd; --card:#ffffff; --text:#0f2540; --muted:#6b7f99; --line:#e1ebf7;
+  --blue:#1d6fe0; --blue-2:#38a6ff; --blue-3:#7fd0ff; --blue-soft:#e3f0ff;
+  --grad:linear-gradient(135deg,#1558c9 0%,#1d8cf0 55%,#4cc3ff 100%);
+  --warn:#ff8a3d; --danger:#e5484d; --ok:#17b890;
+  --shadow:0 10px 30px rgba(24,96,190,.12); --radius:22px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#08121f; --card:#101e31; --text:#e8f1fc; --muted:#8ba0bb; --line:#1c3049;
+    --blue-soft:#14304f; --shadow:0 10px 30px rgba(0,0,0,.35);
+    --grad:linear-gradient(135deg,#0d3f96 0%,#1670cc 55%,#2a9be0 100%);
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{font-family:'Prompt',system-ui,'Segoe UI','Leelawadee UI',Tahoma,sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.5}
+button,input,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+.app{max-width:520px;margin:0 auto;min-height:100%;padding-bottom:110px;position:relative}
+
+/* Header */
+.hero{background:var(--grad);color:#fff;padding:22px 20px 96px;border-radius:0 0 34px 34px;position:relative;overflow:hidden}
+.hero::before,.hero::after{content:"";position:absolute;border-radius:50%;background:rgba(255,255,255,.12)}
+.hero::before{width:220px;height:220px;right:-70px;top:-80px}
+.hero::after{width:140px;height:140px;left:-50px;bottom:-40px;background:rgba(255,255,255,.08)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:18px;position:relative;z-index:1}
+.brand .logo{width:36px;height:36px;border-radius:12px;background:rgba(255,255,255,.22);display:grid;place-items:center;font-size:19px;backdrop-filter:blur(6px)}
+.hero h1{margin:14px 0 2px;font-size:24px;font-weight:600;position:relative;z-index:1}
+.hero p{margin:0;opacity:.88;font-weight:300;position:relative;z-index:1}
+.datenav{display:flex;align-items:center;justify-content:space-between;margin-top:14px;position:relative;z-index:1}
+.datenav button{width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.2);color:#fff;font-size:18px}
+.datenav button:disabled{opacity:.35;cursor:default}
+.datenav .d{text-align:center}
+.datenav .d b{display:block;font-size:17px;font-weight:600}
+.datenav .d span{font-size:12.5px;opacity:.85;font-weight:300}
+
+.view{display:none;padding:0 16px;margin-top:-76px;position:relative;z-index:2}
+.view.active{display:block;animation:fade .3s ease}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:16px}
+.card h2{margin:0 0 12px;font-size:16px;font-weight:600}
+
+/* Ring */
+.ringwrap{display:flex;align-items:center;gap:16px}
+.ring{position:relative;width:170px;height:170px;flex:none}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:14;stroke-linecap:round}
+.ring .track{stroke:var(--blue-soft)}
+.ring .prog{stroke:url(#rg);transition:stroke-dashoffset .9s cubic-bezier(.2,.8,.2,1)}
+.ring.over .prog{stroke:var(--warn)}
+.ring .mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.ring .mid b{font-size:34px;font-weight:700;line-height:1.05;color:var(--blue)}
+.ring.over .mid b{color:var(--warn)}
+.ring .mid span{font-size:12px;color:var(--muted)}
+.stats{flex:1;display:grid;gap:10px;min-width:0}
+.stat{background:var(--blue-soft);border-radius:14px;padding:9px 12px}
+.stat span{display:block;font-size:11.5px;color:var(--muted)}
+.stat b{font-size:17px;font-weight:600}
+.stat.over b{color:var(--warn)}
+.macros{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.macro{border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center}
+.macro i{display:block;width:26px;height:4px;border-radius:4px;margin:0 auto 6px}
+.macro b{font-size:16px;font-weight:600}
+.macro span{display:block;font-size:11.5px;color:var(--muted)}
+
+/* Meals */
+.meal{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.meal:first-of-type{border-top:0}
+.thumb{width:58px;height:58px;border-radius:16px;object-fit:cover;flex:none;background:var(--blue-soft);display:grid;place-items:center;font-size:24px}
+.meal .info{flex:1;min-width:0}
+.meal .info b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meal .info span{font-size:12px;color:var(--muted)}
+.meal .kcal{text-align:right;flex:none}
+.meal .kcal b{font-size:17px;color:var(--blue);font-weight:600}
+.meal .kcal span{display:block;font-size:11px;color:var(--muted)}
+.iconbtn{width:34px;height:34px;border-radius:10px;color:var(--muted);font-size:15px;flex:none}
+.iconbtn:hover{background:var(--blue-soft)}
+.empty{text-align:center;color:var(--muted);padding:22px 8px}
+.empty .big{font-size:42px;display:block;margin-bottom:6px}
+
+/* Chart */
+.chart{position:relative;height:190px;display:flex;align-items:flex-end;gap:8px;padding-top:10px}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:5px;cursor:pointer}
+.bar .v{font-size:10.5px;color:var(--muted)}
+.bar .b{width:100%;max-width:34px;border-radius:10px 10px 4px 4px;background:linear-gradient(180deg,var(--blue-2),var(--blue));min-height:3px;transition:height .7s cubic-bezier(.2,.8,.2,1)}
+.bar.over .b{background:linear-gradient(180deg,#ffb37a,var(--warn))}
+.bar.zero .b{background:var(--blue-soft)}
+.bar .l{font-size:11.5px;color:var(--muted)}
+.bar.today .l{color:var(--blue);font-weight:600}
+.goal-line{position:absolute;left:0;right:0;border-top:2px dashed var(--blue-3);pointer-events:none}
+.goal-line span{position:absolute;right:0;top:-18px;font-size:10.5px;color:var(--muted);background:var(--card);padding:0 4px}
+.sumrow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.dayrow{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-top:1px solid var(--line);cursor:pointer}
+.dayrow:first-of-type{border-top:0}
+.dayrow span{color:var(--muted);font-size:12.5px}
+.dayrow b{color:var(--blue);font-weight:600}
+
+/* Forms */
+label{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
+input[type=text],input[type=number],input[type=password],input[type=time]{width:100%;padding:12px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);outline:none;transition:border-color .2s}
+input:focus{border-color:var(--blue-2)}
+.row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 18px;border-radius:16px;font-weight:500;width:100%}
+.btn.primary{background:var(--grad);color:#fff;box-shadow:0 8px 20px rgba(29,111,224,.35)}
+.btn.ghost{background:var(--blue-soft);color:var(--blue)}
+.btn.danger{background:transparent;color:var(--danger);border:1.5px solid var(--danger)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:active{transform:scale(.98)}
+.hint{font-size:12px;color:var(--muted);margin-top:6px}
+.keyrow{display:flex;gap:8px}
+.keyrow input{flex:1}
+.keyrow button{flex:none;width:48px;border-radius:14px;background:var(--blue-soft)}
+.pill{display:inline-block;font-size:11.5px;padding:3px 10px;border-radius:99px;background:var(--blue-soft);color:var(--blue)}
+.pill.ok{background:rgba(23,184,144,.15);color:var(--ok)}
+.pill.no{background:rgba(255,138,61,.16);color:var(--warn)}
+
+/* Bottom nav */
+.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;width:min(488px,calc(100% - 28px));background:var(--card);border-radius:26px;box-shadow:0 12px 36px rgba(24,96,190,.22);display:grid;grid-template-columns:1fr 1fr 76px 1fr 1fr;align-items:center;padding:8px 6px;z-index:20;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))}
+.nav .tab{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--muted);padding:6px 0;border-radius:16px}
+.nav .tab svg{width:22px;height:22px}
+.nav .tab.active{color:var(--blue);font-weight:500}
+.fab{width:64px;height:64px;border-radius:22px;background:var(--grad);color:#fff;display:grid;place-items:center;margin:-34px auto 0;box-shadow:0 12px 26px rgba(29,111,224,.5);transition:transform .15s}
+.fab:active{transform:scale(.93)}
+.fab svg{width:28px;height:28px}
+
+/* Sheet */
+.backdrop{position:fixed;inset:0;background:rgba(6,20,40,.55);backdrop-filter:blur(3px);z-index:40;display:none;align-items:flex-end;justify-content:center}
+.backdrop.open{display:flex;animation:fadein .2s}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+.sheet{background:var(--card);width:100%;max-width:520px;max-height:94vh;overflow:auto;border-radius:28px 28px 0 0;padding:10px 18px calc(22px + env(safe-area-inset-bottom,0px));animation:up .3s cubic-bezier(.2,.8,.2,1)}
+@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+.grab{width:44px;height:5px;border-radius:5px;background:var(--line);margin:0 auto 10px}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.sheet-head h3{margin:0;font-size:18px;font-weight:600}
+.photo{border:2px dashed var(--blue-3);border-radius:20px;background:var(--blue-soft);min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;text-align:center;position:relative;overflow:hidden}
+.photo.has{border-style:solid;padding:0;min-height:0}
+.photo img{width:100%;max-height:260px;object-fit:cover;display:block}
+.photo .picks{display:flex;gap:10px;width:100%}
+.scan{position:absolute;inset:0;background:rgba(8,30,60,.55);color:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.scan.on{display:flex}
+.scan::before{content:"";position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#7fd0ff,transparent);animation:scan 1.6s linear infinite}
+@keyframes scan{from{top:0}to{top:100%}}
+.spin{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.ainote{background:var(--blue-soft);border-radius:14px;padding:10px 12px;font-size:12.5px;margin-top:12px;display:none}
+.ainote.on{display:block}
+.item{display:grid;grid-template-columns:1fr 92px 34px;gap:8px;margin-bottom:8px;align-items:center}
+.item input{padding:10px 12px}
+.linkbtn{color:var(--blue);font-size:13px;font-weight:500;padding:6px 0}
+.actions{display:grid;gap:10px;margin-top:18px}
+
+.toast{position:fixed;left:50%;bottom:108px;transform:translateX(-50%) translateY(20px);background:#0f2540;color:#fff;padding:11px 18px;border-radius:14px;font-size:13.5px;opacity:0;pointer-events:none;transition:.3s;z-index:60;max-width:calc(100% - 40px);text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.toast.on{opacity:1;transform:translateX(-50%)}
+.toast.err{background:var(--danger)}
+[hidden]{display:none!important}
+@media (max-width:370px){.ring{width:140px;height:140px}.ring .mid b{font-size:28px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hero">
+    <div class="brand"><div class="logo">🍱</div>FoodSnap</div>
+    <div id="heroToday">
+      <div class="datenav">
+        <button id="prevDay" aria-label="วันก่อนหน้า">‹</button>
+        <div class="d"><b id="dateTitle"></b><span id="dateSub"></span></div>
+        <button id="nextDay" aria-label="วันถัดไป">›</button>
+      </div>
+    </div>
+    <div id="heroOther" hidden><h1 id="heroTitle"></h1><p id="heroDesc"></p></div>
+  </header>
+
+  <!-- TODAY -->
+  <section class="view active" id="view-today">
+    <div class="card">
+      <div class="ringwrap">
+        <div class="ring" id="ring">
+          <svg viewBox="0 0 200 200">
+            <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4cc3ff"/><stop offset="1" stop-color="#1558c9"/></linearGradient></defs>
+            <circle class="track" cx="100" cy="100" r="84"/>
+            <circle class="prog" id="ringProg" cx="100" cy="100" r="84" stroke-dasharray="527.8" stroke-dashoffset="527.8"/>
+          </svg>
+          <div class="mid"><b id="kcalNow">0</b><span>kcal ที่ได้รับ</span></div>
+        </div>
+        <div class="stats">
+          <div class="stat"><span>เป้าหมาย</span><b id="kcalGoal">0</b></div>
+          <div class="stat" id="remainBox"><span id="remainLabel">คงเหลือ</span><b id="kcalRemain">0</b></div>
+          <div class="stat"><span>จำนวนมื้อ</span><b id="mealCount">0</b></div>
+        </div>
+      </div>
+      <div class="macros">
+        <div class="macro"><i style="background:#1d6fe0"></i><b id="mP">0</b><span>โปรตีน (g)</span></div>
+        <div class="macro"><i style="background:#38a6ff"></i><b id="mC">0</b><span>คาร์บ (g)</span></div>
+        <div class="macro"><i style="background:#7fd0ff"></i><b id="mF">0</b><span>ไขมัน (g)</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>รายการอาหาร</h2>
+      <div id="mealList"></div>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="view" id="view-history">
+    <div class="card">
+      <h2>แคลอรี่ 7 วันล่าสุด</h2>
+      <div class="chart" id="chart"></div>
+    </div>
+    <div class="card">
+      <div class="sumrow">
+        <div class="stat"><span>เฉลี่ย/วัน</span><b id="hAvg">0</b></div>
+        <div class="stat"><span>สูงสุด</span><b id="hMax">0</b></div>
+        <div class="stat"><span>วันที่บันทึก</span><b id="hDays">0</b></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>ประวัติรายวัน</h2>
+      <div id="dayList"></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="view" id="view-settings">
+    <div class="card">
+      <h2>การเชื่อมต่อ Groq AI <span class="pill" id="keyStatus"></span></h2>
+      <label for="apiKey">Groq API Key</label>
+      <div class="keyrow">
+        <input type="password" id="apiKey" placeholder="gsk_..." autocomplete="off" spellcheck="false">
+        <button id="toggleKey" aria-label="แสดง/ซ่อน key">👁</button>
+      </div>
+      <div class="hint">Key ถูกเก็บในเครื่องนี้เท่านั้น (Local Storage) และส่งไปที่ api.groq.com เพื่อวิเคราะห์รูปเท่านั้น · สร้าง key ได้ที่ console.groq.com/keys</div>
+      <label for="model">โมเดล</label>
+      <input type="text" id="model" list="models" placeholder="qwen/qwen3.8-27b" spellcheck="false">
+      <datalist id="models"><option value="qwen/qwen3.8-27b"><option value="meta-models/muse-spark-open"></datalist>
+    </div>
+    <div class="card">
+      <h2>เป้าหมาย</h2>
+      <label for="goal">แคลอรี่ต่อวัน (kcal)</label>
+      <input type="number" id="goal" min="500" max="10000" step="50" inputmode="numeric">
+      <div class="actions"><button class="btn primary" id="saveSettings">บันทึกการตั้งค่า</button></div>
+    </div>
+    <div class="card">
+      <h2>ข้อมูล</h2>
+      <div class="hint" id="storageInfo" style="margin:0 0 12px"></div>
+      <div class="row2">
+        <button class="btn ghost" id="exportBtn">⬇ Export</button>
+        <button class="btn ghost" id="importBtn">⬆ Import</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+      <div class="actions"><button class="btn danger" id="clearBtn">ลบข้อมูลอาหารทั้งหมด</button></div>
+    </div>
+  </section>
+</div>
+
+<nav class="nav">
+  <button class="tab active" data-view="today">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>วันนี้
+  </button>
+  <button class="tab" data-view="history">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>ประวัติ
+  </button>
+  <button class="fab" id="fab" aria-label="ถ่ายรูปอาหาร">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+  </button>
+  <button class="tab" id="manualTab">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5l4 4L8 20l-5 1 1-5z"/></svg>กรอกเอง
+  </button>
+  <button class="tab" data-view="settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h10M18 18h2"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>ตั้งค่า
+  </button>
+</nav>
+
+<!-- ADD / EDIT SHEET -->
+<div class="backdrop" id="backdrop">
+  <div class="sheet" role="dialog" aria-modal="true">
+    <div class="grab"></div>
+    <div class="sheet-head"><h3 id="sheetTitle">เพิ่มมื้ออาหาร</h3><button class="iconbtn" id="closeSheet" aria-label="ปิด">✕</button></div>
+
+    <div class="photo" id="photo">
+      <div id="photoEmpty">
+        <div style="font-size:40px">📸</div>
+        <div style="margin-bottom:10px">ถ่ายรูปอาหาร แล้วให้ AI ประเมินแคลอรี่ให้</div>
+        <div class="picks">
+          <button class="btn primary" id="pickCamera">ถ่ายรูป</button>
+          <button class="btn ghost" id="pickGallery" style="background:var(--card)">เลือกรูป</button>
+        </div>
+      </div>
+      <img id="preview" alt="รูปอาหาร" hidden>
+      <div class="scan" id="scan"><div class="spin"></div><div>AI กำลังวิเคราะห์อาหาร…</div></div>
+    </div>
+    <input type="file" id="fileCamera" accept="image/*" capture="environment" hidden>
+    <input type="file" id="fileGallery" accept="image/*" hidden>
+
+    <div class="ainote" id="aiNote"></div>
+
+    <div id="form" hidden>
+      <label for="fName">ชื่อเมนู</label>
+      <input type="text" id="fName" placeholder="เช่น ข้าวกะเพราไก่ไข่ดาว" maxlength="80">
+      <div class="row2">
+        <div><label for="fKcal">แคลอรี่รวม (kcal)</label><input type="number" id="fKcal" min="0" inputmode="numeric"></div>
+        <div><label for="fTime">เวลา</label><input type="time" id="fTime"></div>
+      </div>
+      <div class="row">
+        <div><label for="fP">โปรตีน (g)</label><input type="number" id="fP" min="0" inputmode="decimal"></div>
+        <div><label for="fC">คาร์บ (g)</label><input type="number" id="fC" min="0" inputmode="decimal"></div>
+        <div><label for="fF">ไขมัน (g)</label><input type="number" id="fF" min="0" inputmode="decimal"></div>
+      </div>
+      <label>ส่วนประกอบ</label>
+      <div id="items"></div>
+      <button class="linkbtn" id="addItem">+ เพิ่มส่วนประกอบ</button>
+      <div class="actions">
+        <button class="btn primary" id="saveEntry">บันทึก</button>
+        <button class="btn ghost" id="reAnalyze" hidden>วิเคราะห์รูปอีกครั้ง</button>
+      </div>
+    </div>
+    <div class="actions" id="manualRow"><button class="btn ghost" id="manualBtn">ไม่มีรูป — กรอกข้อมูลเอง</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+const LS_S = 'foodapp.settings', LS_E = 'foodapp.entries';
+const DEFAULT_MODEL = 'qwen/qwen3.8-27b', API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? n : d; };
+const fmt = n => Math.round(n).toLocaleString('th-TH');
+const pad = n => String(n).padStart(2, '0');
+const dkey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseKey = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+const addDays = (k, n) => { const d = parseKey(k); d.setDate(d.getDate() + n); return dkey(d); };
+const todayKey = () => dkey(new Date());
+const nowTime = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+
+/* ---------- storage ---------- */
+function load(key, fallback) {
+  try { const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; } catch { return fallback; }
+}
+let settings = Object.assign({ apiKey: '', model: DEFAULT_MODEL, dailyGoal: 2000 }, load(LS_S, {}));
+if (/^gpt-/i.test(settings.model)) settings.model = DEFAULT_MODEL; // migrate old OpenAI setting
+let entries = sanitizeEntries(load(LS_E, []));
+
+function sanitizeEntries(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(e.date)).map(e => ({
+    id: String(e.id || (Date.now() + Math.random())),
+    date: e.date,
+    time: /^\d{2}:\d{2}$/.test(e.time) ? e.time : '12:00',
+    dishName: String(e.dishName || 'ไม่ระบุชื่อ').slice(0, 80),
+    calories: num(e.calories), protein: num(e.protein), carbs: num(e.carbs), fat: num(e.fat),
+    items: Array.isArray(e.items) ? e.items.slice(0, 30).map(i => ({ name: String(i?.name || '').slice(0, 80), calories: num(i?.calories) })) : [],
+    thumb: typeof e.thumb === 'string' && e.thumb.startsWith('data:image/') ? e.thumb : ''
+  }));
+}
+function saveEntries() {
+  try { localStorage.setItem(LS_E, JSON.stringify(entries)); return true; }
+  catch (err) { toast('พื้นที่เก็บข้อมูลเต็ม กรุณา Export แล้วลบข้อมูลเก่า', true); return false; }
+}
+function saveSettings() {
+  try { localStorage.setItem(LS_S, JSON.stringify(settings)); return true; }
+  catch { toast('บันทึกการตั้งค่าไม่สำเร็จ', true); return false; }
+}
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg, err) {
+  const t = $('toast'); t.textContent = msg; t.className = 'toast on' + (err ? ' err' : '');
+  clearTimeout(toastT); toastT = setTimeout(() => t.className = 'toast', err ? 4500 : 2600);
+}
+
+/* ---------- navigation ---------- */
+let currentDate = todayKey();
+let currentView = 'today';
+const heroText = {
+  history: ['ประวัติการกิน', 'ดูแนวโน้มแคลอรี่ย้อนหลังของคุณ'],
+  settings: ['ตั้งค่า', 'เชื่อมต่อ Groq AI และกำหนดเป้าหมาย']
+};
+function show(view) {
+  currentView = view;
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
+  document.querySelectorAll('.nav .tab[data-view]').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+  $('heroToday').hidden = view !== 'today';
+  $('heroOther').hidden = view === 'today';
+  if (heroText[view]) { $('heroTitle').textContent = heroText[view][0]; $('heroDesc').textContent = heroText[view][1]; }
+  render();
+  window.scrollTo({ top: 0 });
+}
+document.querySelectorAll('.nav .tab[data-view]').forEach(t => t.onclick = () => {
+  if (t.dataset.view === 'today' && currentView === 'today') currentDate = todayKey();
+  show(t.dataset.view);
+});
+$('prevDay').onclick = () => { currentDate = addDays(currentDate, -1); render(); };
+$('nextDay').onclick = () => { if (currentDate < todayKey()) { currentDate = addDays(currentDate, 1); render(); } };
+
+/* ---------- rendering ---------- */
+const dayEntries = k => entries.filter(e => e.date === k).sort((a, b) => a.time.localeCompare(b.time));
+const dayTotal = k => dayEntries(k).reduce((s, e) => s + e.calories, 0);
+
+function render() {
+  if (currentView === 'today') renderToday();
+  else if (currentView === 'history') renderHistory();
+  else renderSettings();
+}
+
+function renderToday() {
+  const t = todayKey(), d = parseKey(currentDate);
+  $('dateTitle').textContent = currentDate === t ? 'วันนี้' : currentDate === addDays(t, -1) ? 'เมื่อวาน' : d.toLocaleDateString('th-TH', { weekday: 'long' });
+  $('dateSub').textContent = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+  $('nextDay').disabled = currentDate >= t;
+
+  const list = dayEntries(currentDate);
+  const sum = list.reduce((a, e) => ({ k: a.k + e.calories, p: a.p + e.protein, c: a.c + e.carbs, f: a.f + e.fat }), { k: 0, p: 0, c: 0, f: 0 });
+  const goal = settings.dailyGoal, over = sum.k > goal;
+  const C = 527.8, ratio = goal > 0 ? Math.min(sum.k / goal, 1) : 0;
+  $('ringProg').style.strokeDashoffset = C * (1 - ratio);
+  $('ring').classList.toggle('over', over);
+  $('kcalNow').textContent = fmt(sum.k);
+  $('kcalGoal').textContent = fmt(goal);
+  $('remainLabel').textContent = over ? 'เกินเป้าหมาย' : 'คงเหลือ';
+  $('kcalRemain').textContent = fmt(Math.abs(goal - sum.k));
+  $('remainBox').classList.toggle('over', over);
+  $('mealCount').textContent = list.length;
+  $('mP').textContent = fmt(sum.p); $('mC').textContent = fmt(sum.c); $('mF').textContent = fmt(sum.f);
+
+  const box = $('mealList');
+  if (!list.length) {
+    box.innerHTML = `<div class="empty"><span class="big">🍽️</span>ยังไม่มีรายการอาหาร${currentDate === t ? 'วันนี้' : 'ในวันนี้'}<br>กดปุ่มกล้องด้านล่างเพื่อเริ่มบันทึก</div>`;
+    return;
+  }
+  box.innerHTML = list.map(e => `
+    <div class="meal" data-edit="${esc(e.id)}" style="cursor:pointer">
+      ${e.thumb ? `<img class="thumb" src="${esc(e.thumb)}" alt="">` : `<div class="thumb">🍛</div>`}
+      <div class="info"><b>${esc(e.dishName)}</b><span>${esc(e.time)} น.${e.items.length ? ' · ' + e.items.length + ' รายการ' : ''}</span></div>
+      <div class="kcal"><b>${fmt(e.calories)}</b><span>kcal</span></div>
+      <button class="iconbtn" data-del="${esc(e.id)}" aria-label="ลบ">🗑</button>
+    </div>`).join('');
+}
+$('mealList').onclick = ev => {
+  const b = ev.target.closest('[data-del]') || ev.target.closest('[data-edit]'); if (!b) return;
+  if (b.dataset.edit) { const e = entries.find(x => x.id === b.dataset.edit); if (e) openSheet(e); }
+  else if (b.dataset.del) {
+    const e = entries.find(x => x.id === b.dataset.del);
+    if (e && confirm(`ลบ "${e.dishName}" ออกจากรายการ?`)) { entries = entries.filter(x => x.id !== e.id); saveEntries(); render(); toast('ลบแล้ว'); }
+  }
+};
+
+function renderHistory() {
+  const t = todayKey(), goal = settings.dailyGoal;
+  const days = Array.from({ length: 7 }, (_, i) => addDays(t, i - 6));
+  const totals = days.map(dayTotal);
+  const top = Math.max(goal, ...totals) * 1.15 || 1;
+  const H = 130; // px available for bars
+  $('chart').innerHTML = days.map((k, i) => {
+    const v = totals[i], cls = (v > goal ? ' over' : '') + (v === 0 ? ' zero' : '') + (k === t ? ' today' : '');
+    const lab = k === t ? 'วันนี้' : parseKey(k).toLocaleDateString('th-TH', { weekday: 'short' });
+    return `<div class="bar${cls}" data-day="${k}"><span class="v">${v ? fmt(v) : ''}</span><div class="b" style="height:${Math.round(v / top * H)}px"></div><span class="l">${esc(lab)}</span></div>`;
+  }).join('') + `<div class="goal-line" style="bottom:${Math.round(goal / top * H) + 23}px"><span>เป้า ${fmt(goal)}</span></div>`;
+
+  const byDay = {};
+  entries.forEach(e => { (byDay[e.date] ??= { k: 0, n: 0 }); byDay[e.date].k += e.calories; byDay[e.date].n++; });
+  const keys = Object.keys(byDay).sort().reverse();
+  const vals = keys.map(k => byDay[k].k);
+  $('hAvg').textContent = vals.length ? fmt(vals.reduce((a, b) => a + b, 0) / vals.length) : '0';
+  $('hMax').textContent = vals.length ? fmt(Math.max(...vals)) : '0';
+  $('hDays').textContent = keys.length;
+  $('dayList').innerHTML = keys.length ? keys.slice(0, 60).map(k => `
+    <div class="dayrow" data-day="${k}">
+      <div>${esc(parseKey(k).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: '2-digit' }))}<br><span>${byDay[k].n} มื้อ</span></div>
+      <b style="${byDay[k].k > goal ? 'color:var(--warn)' : ''}">${fmt(byDay[k].k)} kcal</b>
+    </div>`).join('') : `<div class="empty"><span class="big">📊</span>ยังไม่มีประวัติ</div>`;
+}
+const gotoDay = ev => { const el = ev.target.closest('[data-day]'); if (el) { currentDate = el.dataset.day; show('today'); } };
+$('chart').onclick = gotoDay; $('dayList').onclick = gotoDay;
+
+function renderSettings() {
+  $('apiKey').value = settings.apiKey; $('model').value = settings.model; $('goal').value = settings.dailyGoal;
+  const ks = $('keyStatus');
+  ks.textContent = settings.apiKey ? 'พร้อมใช้งาน' : 'ยังไม่ได้ตั้งค่า';
+  ks.className = 'pill ' + (settings.apiKey ? 'ok' : 'no');
+  let bytes = 0; try { bytes = (localStorage.getItem(LS_E) || '').length; } catch {}
+  $('storageInfo').textContent = `บันทึกแล้ว ${entries.length} รายการ · ใช้พื้นที่ประมาณ ${(bytes / 1024).toFixed(0)} KB จาก ~5,000 KB`;
+}
+$('toggleKey').onclick = () => { const i = $('apiKey'); i.type = i.type === 'password' ? 'text' : 'password'; };
+$('saveSettings').onclick = () => {
+  const g = Math.round(num($('goal').value));
+  if (g < 500 || g > 10000) return toast('เป้าหมายควรอยู่ระหว่าง 500–10,000 kcal', true);
+  settings.apiKey = $('apiKey').value.trim();
+  settings.model = $('model').value.trim() || DEFAULT_MODEL;
+  settings.dailyGoal = g;
+  if (saveSettings()) { toast('บันทึกการตั้งค่าแล้ว'); renderSettings(); }
+};
+$('exportBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify({ app: 'foodsnap', version: 1, dailyGoal: settings.dailyGoal, entries }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `foodsnap-${todayKey()}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$('importBtn').onclick = () => $('importFile').click();
+$('importFile').onchange = async ev => {
+  const f = ev.target.files[0]; ev.target.value = ''; if (!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    const incoming = sanitizeEntries(Array.isArray(data) ? data : data.entries);
+    if (!incoming.length) return toast('ไม่พบข้อมูลอาหารในไฟล์นี้', true);
+    if (!confirm(`นำเข้า ${incoming.length} รายการ? (รายการที่ซ้ำกันจะถูกแทนที่)`)) return;
+    const map = new Map(entries.map(e => [e.id, e])); incoming.forEach(e => map.set(e.id, e));
+    const backup = entries; entries = [...map.values()];
+    if (!saveEntries()) { entries = backup; return; }
+    toast(`นำเข้า ${incoming.length} รายการแล้ว`); render();
+  } catch { toast('ไฟล์ไม่ถูกต้อง', true); }
+};
+$('clearBtn').onclick = () => {
+  if (!entries.length) return toast('ไม่มีข้อมูลให้ลบ');
+  if (confirm(`ลบข้อมูลอาหารทั้งหมด ${entries.length} รายการ? การกระทำนี้ย้อนกลับไม่ได้`)) { entries = []; saveEntries(); render(); toast('ลบข้อมูลทั้งหมดแล้ว'); }
+};
+
+/* ---------- image helpers ---------- */
+function loadImage(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); res(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('อ่านไฟล์รูปไม่ได้')); };
+    img.src = url;
+  });
+}
+function scaleImage(img, maxSide, quality, square) {
+  const c = document.createElement('canvas'), ctx = c.getContext('2d');
+  if (square) {
+    const s = Math.min(img.width, img.height);
+    c.width = c.height = maxSide;
+    ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, maxSide, maxSide);
+  } else {
+    const r = Math.min(1, maxSide / Math.max(img.width, img.height));
+    c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+  }
+  return c.toDataURL('image/jpeg', quality);
+}
+
+/* ---------- Groq (OpenAI-compatible) ---------- */
+const SCHEMA = {
+  type: 'object', additionalProperties: false,
+  required: ['is_food', 'dish_name', 'items', 'total_calories', 'protein_g', 'carbs_g', 'fat_g', 'confidence', 'note'],
+  properties: {
+    is_food: { type: 'boolean' },
+    dish_name: { type: 'string' },
+    items: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['name', 'portion', 'calories'],
+      properties: { name: { type: 'string' }, portion: { type: 'string' }, calories: { type: 'number' } } } },
+    total_calories: { type: 'number' }, protein_g: { type: 'number' }, carbs_g: { type: 'number' }, fat_g: { type: 'number' },
+    confidence: { type: 'string', enum: ['low', 'medium', 'high'] },
+    note: { type: 'string' }
+  }
+};
+const JSON_HINT = ' ตอบกลับเป็น JSON object เท่านั้น ห้ามมีข้อความอื่น โดยมีคีย์ดังนี้: is_food (boolean), dish_name (string), items (array ของ {name: string, portion: string, calories: number}), total_calories (number), protein_g (number), carbs_g (number), fat_g (number), confidence ("low" | "medium" | "high"), note (string)';
+function parseAiJson(text) {
+  const s = String(text || '').replace(/<think>[\s\S]*?<\/think>/gi, '');
+  const a = s.indexOf('{'), b = s.lastIndexOf('}');
+  if (a < 0 || b <= a) throw new Error('no json');
+  const r = JSON.parse(s.slice(a, b + 1));
+  if (typeof r !== 'object' || r === null) throw new Error('bad json');
+  if (typeof r.is_food !== 'boolean') r.is_food = !!(r.dish_name || (r.items && r.items.length));
+  if (!Array.isArray(r.items)) r.items = [];
+  if (!Number.isFinite(Number(r.total_calories))) r.total_calories = r.items.reduce((t, i) => t + num(i?.calories), 0);
+  return r;
+}
+async function analyzeImage(dataUrl) {
+  try {
+    return await callGroq(dataUrl, { type: 'json_schema', json_schema: { name: 'food_analysis', strict: false, schema: SCHEMA } });
+  } catch (e) {
+    if (!e.retryJsonMode) throw e;
+    return await callGroq(dataUrl, { type: 'json_object' }); // fallback for models without schema support
+  }
+}
+async function callGroq(dataUrl, format) {
+  let resp;
+  try {
+    resp = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + settings.apiKey },
+      body: JSON.stringify({
+        model: settings.model,
+        messages: [
+          { role: 'system', content: 'คุณเป็นนักโภชนาการผู้เชี่ยวชาญอาหารไทยและอาหารนานาชาติ วิเคราะห์รูปอาหารแล้วประเมินชื่อเมนู ส่วนประกอบ ปริมาณ และพลังงาน (kcal) รวมถึงโปรตีน คาร์โบไฮเดรต ไขมัน (กรัม) ตามปริมาณที่เห็นในรูป ตอบเป็นภาษาไทยทั้งหมด total_calories ต้องเท่ากับผลรวมของ items ถ้ารูปไม่ใช่อาหารหรือเครื่องดื่มให้ is_food=false และอธิบายสั้นๆ ใน note ส่วน note ให้ใส่ข้อสังเกตสั้นๆ ไม่เกิน 1 ประโยคเกี่ยวกับสมมติฐานของปริมาณ' + JSON_HINT },
+          { role: 'user', content: [
+            { type: 'text', text: 'นี่คืออาหารที่ฉันกิน ช่วยบอกว่าเป็นเมนูอะไรและมีกี่แคลอรี่' },
+            { type: 'image_url', image_url: { url: dataUrl } }
+          ] }
+        ],
+        temperature: 0.2,
+        response_format: format
+      })
+    });
+  } catch { throw new Error('เชื่อมต่อ Groq ไม่ได้ กรุณาตรวจสอบอินเทอร์เน็ต'); }
+  if (!resp.ok) {
+    let detail = ''; try { detail = (await resp.json())?.error?.message || ''; } catch {}
+    if (resp.status === 400 && format.type === 'json_schema') { const e = new Error(detail); e.retryJsonMode = true; throw e; }
+    const m = {
+      401: 'Groq API Key ไม่ถูกต้อง กรุณาตรวจสอบในหน้าตั้งค่า',
+      403: 'API Key นี้ไม่มีสิทธิ์ใช้โมเดลนี้',
+      404: `ไม่พบโมเดล "${settings.model}" กรุณาเปลี่ยนในหน้าตั้งค่า`,
+      413: 'รูปมีขนาดใหญ่เกินไป ลองใช้รูปอื่น',
+      429: 'ใช้งานเกินโควตา (rate limit) ของ Groq กรุณารอสักครู่แล้วลองใหม่'
+    }[resp.status];
+    throw new Error(m || `Groq ตอบกลับผิดพลาด (${resp.status}) ${detail.slice(0, 140)}`);
+  }
+  const data = await resp.json(), msg = data?.choices?.[0]?.message;
+  if (msg?.refusal) throw new Error('AI ไม่สามารถวิเคราะห์รูปนี้ได้');
+  try { return parseAiJson(msg.content); } catch { throw new Error('อ่านผลลัพธ์จาก AI ไม่ได้ ลองใหม่อีกครั้ง'); }
+}
+
+/* ---------- add / edit sheet ---------- */
+let draft = null;      // { id?, date, thumb, big }
+let analyzing = false;
+
+function setPhoto(src) {
+  const has = !!src;
+  $('photo').classList.toggle('has', has);
+  $('photoEmpty').hidden = has;
+  $('preview').hidden = !has;
+  if (has) $('preview').src = src; else $('preview').removeAttribute('src');
+}
+function itemRow(name = '', kcal = '') {
+  const d = document.createElement('div'); d.className = 'item';
+  d.innerHTML = `<input type="text" placeholder="ชื่อ" maxlength="80"><input type="number" placeholder="kcal" min="0" inputmode="numeric"><button class="iconbtn" aria-label="ลบ">✕</button>`;
+  d.children[0].value = name; d.children[1].value = kcal;
+  return d;
+}
+function readItems() {
+  return [...$('items').children].map(r => ({ name: r.children[0].value.trim(), calories: num(r.children[1].value) })).filter(i => i.name);
+}
+$('items').addEventListener('input', ev => {
+  if (ev.target.type !== 'number') return;
+  const rows = [...$('items').children];
+  if (rows.some(r => r.children[1].value !== '')) $('fKcal').value = Math.round(rows.reduce((s, r) => s + num(r.children[1].value), 0));
+});
+$('items').addEventListener('click', ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  b.parentElement.remove(); $('items').dispatchEvent(new Event('input'));
+  const rows = [...$('items').children];
+  if (rows.length) $('fKcal').value = Math.round(rows.reduce((s, r) => s + num(r.children[1].value), 0));
+});
+$('addItem').onclick = () => { const r = itemRow(); $('items').appendChild(r); r.children[0].focus(); };
+
+function fillForm(v) {
+  $('fName').value = v.dishName || '';
+  $('fKcal').value = v.calories ?? '';
+  $('fTime').value = v.time || nowTime();
+  $('fP').value = v.protein ?? ''; $('fC').value = v.carbs ?? ''; $('fF').value = v.fat ?? '';
+  $('items').replaceChildren(...(v.items || []).map(i => itemRow(i.name, i.calories)));
+}
+function showForm(on) { $('form').hidden = !on; $('manualRow').hidden = on; }
+function note(text) { const n = $('aiNote'); n.textContent = text || ''; n.classList.toggle('on', !!text); }
+
+function openSheet(entry, manual) {
+  analyzing = false; $('scan').classList.remove('on'); note('');
+  if (entry) {
+    draft = { id: entry.id, date: entry.date, thumb: entry.thumb, big: '' };
+    $('sheetTitle').textContent = 'แก้ไขรายการ';
+    setPhoto(entry.thumb); fillForm(entry); showForm(true);
+  } else {
+    draft = { date: currentView === 'today' ? currentDate : todayKey(), thumb: '', big: '' };
+    $('sheetTitle').textContent = 'เพิ่มมื้ออาหาร';
+    setPhoto(''); fillForm({}); showForm(!!manual);
+  }
+  $('reAnalyze').hidden = true;
+  $('backdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  if (manual) setTimeout(() => $('fName').focus(), 250);
+}
+function closeSheet() {
+  $('backdrop').classList.remove('open'); document.body.style.overflow = ''; draft = null; analyzing = false;
+}
+$('fab').onclick = () => openSheet();
+$('manualTab').onclick = () => openSheet(null, true);
+$('closeSheet').onclick = closeSheet;
+$('backdrop').onclick = ev => { if (ev.target === $('backdrop')) closeSheet(); };
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && draft) closeSheet(); });
+$('manualBtn').onclick = () => { showForm(true); $('fName').focus(); };
+$('pickCamera').onclick = () => $('fileCamera').click();
+$('pickGallery').onclick = () => $('fileGallery').click();
+$('preview').onclick = () => { if (!analyzing) $('fileGallery').click(); };
+$('fileCamera').onchange = $('fileGallery').onchange = ev => { const f = ev.target.files[0]; ev.target.value = ''; if (f) handleFile(f); };
+$('reAnalyze').onclick = () => runAnalysis();
+
+async function handleFile(file) {
+  if (!draft) return;
+  if (!file.type.startsWith('image/')) return toast('กรุณาเลือกไฟล์รูปภาพ', true);
+  try {
+    const img = await loadImage(file);
+    draft.big = scaleImage(img, 1024, 0.82);
+    draft.thumb = scaleImage(img, 200, 0.6, true);
+    setPhoto(draft.big);
+  } catch (e) { return toast(e.message, true); }
+  runAnalysis();
+}
+async function runAnalysis() {
+  if (!draft || !draft.big || analyzing) return;
+  if (!settings.apiKey) {
+    note('ยังไม่ได้ตั้งค่า Groq API Key — ไปที่แท็บ "ตั้งค่า" เพื่อใส่ key หรือกรอกข้อมูลเองด้านล่างได้เลย');
+    showForm(true); return;
+  }
+  const mine = draft;
+  analyzing = true; $('scan').classList.add('on'); note(''); $('saveEntry').disabled = true;
+  try {
+    const r = await analyzeImage(mine.big);
+    if (draft !== mine) return;
+    if (!r.is_food) {
+      note('🤔 AI มองว่ารูปนี้ไม่ใช่อาหาร' + (r.note ? ' — ' + r.note : '') + ' คุณยังกรอกข้อมูลเองได้');
+    } else {
+      const items = (r.items || []).map(i => ({ name: i.portion ? `${i.name} (${i.portion})` : i.name, calories: Math.round(num(i.calories)) }));
+      fillForm({ dishName: r.dish_name, calories: Math.round(num(r.total_calories)), protein: Math.round(num(r.protein_g)), carbs: Math.round(num(r.carbs_g)), fat: Math.round(num(r.fat_g)), items, time: $('fTime').value });
+      const conf = { low: 'ต่ำ', medium: 'ปานกลาง', high: 'สูง' }[r.confidence] || '-';
+      note(`✨ AI ประเมินแล้ว (ความมั่นใจ: ${conf})${r.note ? ' — ' + r.note : ''} · ตรวจสอบและแก้ไขได้ก่อนบันทึก`);
+    }
+  } catch (e) {
+    if (draft !== mine) return;
+    note('⚠️ ' + e.message + ' — คุณกรอกข้อมูลเองได้');
+    toast(e.message, true);
+  } finally {
+    if (draft === mine) { analyzing = false; $('scan').classList.remove('on'); $('saveEntry').disabled = false; showForm(true); $('reAnalyze').hidden = false; }
+  }
+}
+
+$('saveEntry').onclick = () => {
+  if (!draft) return;
+  const name = $('fName').value.trim();
+  if (!name) { $('fName').focus(); return toast('กรุณาใส่ชื่อเมนู', true); }
+  if ($('fKcal').value === '') { $('fKcal').focus(); return toast('กรุณาใส่จำนวนแคลอรี่', true); }
+  const e = {
+    id: draft.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    date: draft.date, time: $('fTime').value || nowTime(), dishName: name,
+    calories: Math.round(num($('fKcal').value)), protein: num($('fP').value), carbs: num($('fC').value), fat: num($('fF').value),
+    items: readItems(), thumb: draft.thumb || ''
+  };
+  const backup = entries;
+  entries = draft.id ? entries.map(x => x.id === e.id ? e : x) : [...entries, e];
+  if (!saveEntries()) { entries = backup; return; }
+  const isNew = !draft.id;
+  closeSheet();
+  if (currentView === 'today') currentDate = e.date;
+  render();
+  toast(isNew ? `บันทึกแล้ว +${fmt(e.calories)} kcal` : 'แก้ไขแล้ว');
+};
+
+show('today');
+})();
+</script>
+</body>
+</html>
